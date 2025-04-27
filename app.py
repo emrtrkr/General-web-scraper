@@ -367,5 +367,5 @@ with tab3:
 
 # Footer
 st.markdown("---")
-st.markdown("### 🛠️ Web Kazıma Aracı vSpecial :) | Geliştirici: Emir Türker")
-st.caption("Bu aracı QmindLab'e özeldir.")
+
+st.caption("Created by Emir Türker :)")

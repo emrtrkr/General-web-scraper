@@ -1,0 +1,13 @@
+# Python
+venv/
+*.pyc
+__pycache__/
+
+# Environment
+.env
+
+# Uygulama
+kazima_sonuclari/
+
+# Sistem
+.DS_Store
