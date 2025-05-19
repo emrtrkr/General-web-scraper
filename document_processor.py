@@ -1,17 +1,8 @@
 from docx import Document
 from docx.shared import Pt
-import os
-from slugify import slugify
-from urllib.parse import urlparse
+from io import BytesIO
 
-def create_document(content, save_dir, url, index):
-    if not os.path.exists(save_dir): 
-        os.makedirs(save_dir)
-    
-    parsed = urlparse(url)
-    base_name = slugify(parsed.path, separator="_") or "anasayfa"
-    filename = f"{base_name}_{index}.docx"
-    
+def create_document_bytes(content):
     doc = Document()
     title = content[0]['text']
     h0 = doc.add_heading(title, level=0)
@@ -47,6 +38,7 @@ def create_document(content, save_dir, url, index):
                     run = p.add_run(li)
                     run.font.size = Pt(12)
     
-    path = os.path.join(save_dir, filename)
-    doc.save(path)
-    return filename
+    doc_io = BytesIO()
+    doc.save(doc_io)
+    doc_io.seek(0)
+    return doc_io

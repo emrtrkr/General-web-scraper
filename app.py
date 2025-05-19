@@ -2,9 +2,9 @@ import streamlit as st
 import time
 import os
 from scraper import fetch_page, get_all_website_links, is_valid_url, process_content, hash_content
-from document_processor import create_document
 from urllib.parse import urlparse
 from bs4 import BeautifulSoup
+from document_processor import create_document_bytes  # yeni fonksiyonu içe aktar
 
 # --- Streamlit Config ---
 st.set_page_config(
@@ -86,9 +86,7 @@ with st.sidebar:
                             placeholder="https://example.com",
                             help="Kazıma işleminin başlayacağı URL")
         
-        save_dir = st.text_input("Kayıt Klasörü:", 
-                                 value="kazima_sonuclari",
-                                 help="DOCX dosyalarının kaydedileceği klasör")
+        
     
     with st.expander("🔍 Element Seçenekleri", expanded=True):
         col1, col2 = st.columns(2)
@@ -198,13 +196,17 @@ with tab1:
                         status_text.text(f"📄 Toplam {len(tasks)} sayfa bulundu ({len(visited)} URL ziyaret edildi)")
                         time.sleep(0.1)
             
+            from document_processor import create_document_bytes  # yeni fonksiyonu içe aktar
+
+# ...
             if tasks:
                 st.markdown(f"### 📃 Toplam {len(tasks)} sayfa işlenecek")
                 
                 succ = 0
                 fail = 0
                 results = []
-                
+                downloadables = []  # yeni: indirilebilir dosyaları sakla
+
                 progress_bar = st.progress(0)
                 status_text = st.empty()
                 result_area = st.container()
@@ -220,8 +222,9 @@ with tab1:
                         fail += 1
                     elif len(cont) > 1:
                         seen_hashes.add(hash_val)
-                        fname = create_document(cont, save_dir, u, i)
-                        results.append(("success", f"✅ Kaydedildi: {u} → {fname}"))
+                        docx_io = create_document_bytes(cont)  # sadece bellekte oluştur
+                        downloadables.append((u, docx_io, i))
+                        results.append(("success", f"✅ Kazındı: {u}"))
                         succ += 1
                     else:
                         results.append(("error", f"❌ İçerik bulunamadı: {u}"))
@@ -237,7 +240,7 @@ with tab1:
                                 st.warning(res_text)
                             else:
                                 st.error(res_text)
-                
+
                 status_text.text("")
                 st.balloons()
                 
@@ -249,42 +252,28 @@ with tab1:
                     st.metric("Başarılı", succ)
                 with col3:
                     st.metric("Başarısız", fail)
-                
-                st.success(f"✅ İşlem tamamlandı! Dosyalar '{save_dir}' klasörüne kaydedildi.")
+
+                st.success("✅ İşlem tamamlandı! Dosyalar aşağıdan indirilebilir.")
+
+
+                st.markdown("## 📥 İndirilebilir Kazıma Sonuçları")
+
+                for u, docx_io, i in downloadables:
+                    parsed = urlparse(u)
+                    filename = f"{parsed.netloc.replace('.', '_')}_{i}.docx"
+                    st.download_button(
+                        label=f"📄 {filename} indir",
+                        data=docx_io,
+                        file_name=filename,
+                        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    )
             else:
                 st.error("❌ İşlenecek sayfa bulunamadı. Lütfen farklı bir URL deneyin.")
 
+
 with tab2:
-    if os.path.exists(save_dir):
-        files = [f for f in os.listdir(save_dir) if f.endswith('.docx')]
-        if files:
-            st.markdown(f"## 📁 Kayıtlı Dosyalar ({len(files)})")
-            
-            file_data = []
-            for i, file in enumerate(sorted(files)):
-                file_size = os.path.getsize(os.path.join(save_dir, file)) / 1024
-                created_time = os.path.getctime(os.path.join(save_dir, file))
-                file_data.append({
-                    "No": i+1,
-                    "Dosya Adı": file,
-                    "Boyut": f"{file_size:.1f} KB",
-                    "Oluşturulma": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(created_time))
-                })
-            
-            st.dataframe(file_data, use_container_width=True)
-            
-            st.markdown("### 📈 Dosya İstatistikleri")
-            total_size = sum([os.path.getsize(os.path.join(save_dir, f)) for f in files]) / 1024
-            
-            col1, col2 = st.columns(2)
-            with col1:
-                st.metric("Toplam Dosya", len(files))
-            with col2:
-                st.metric("Toplam Boyut", f"{total_size:.1f} KB")
-        else:
-            st.info("📂 Henüz kaydedilmiş dosya bulunmuyor.")
-    else:
-        st.info("📂 Kayıt klasörü henüz oluşturulmadı.")
+    st.info("📥 Kazıma sonrası dosyaları tab 1'den indirmeniz yeterlidir. Artık dosyalar sunucuya kaydedilmemektedir.")
+
 
 with tab3:
     st.markdown("## 🔍 Web Kazıma Aracı Kullanım Kılavuzu")
